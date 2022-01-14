@@ -1,0 +1,111 @@
+[enu default]
+
+/*******************************
+Font indices:
+
+SMALL FONT = 0
+NEW SMALL FONT = 1
+ALTERNATIVE SMALL FONT = 2
+ORIGINAL SMALL FONT = 3
+SMALL FONT 2 = 4
+BIG FONT = 5
+ORIGINAL BIG FONT = 6
+INTERMISSION FONT = 7
+CONSOLE FONT = 8
+NEW CONSOLE FONT = 9
+
+Translation indices:
+
+UNDEFINED = -1
+BRICK = 0
+TAN = 1
+GREY = 2
+GREEN = 3
+BROWN = 4
+GOLD = 5
+RED = 6
+BLUE = 7
+ORANGE = 8
+WHITE = 9
+YELLOW = 10
+UNTRANSLATED = 11
+BLACK = 12
+LIGHT BLUE = 13
+CREAM = 14
+OLIVE = 15
+DARK GREEN = 16
+DARK RED = 17
+DARK BROWN = 18
+PURPLE = 19
+DARK GRAY = 20
+CYAN = 21
+ICE = 22
+FIRE = 23
+SAPPHIRE = 24
+TEAL = 25
+
+---
+
+The key for your value should be the exact name of the damage type. Each value follows a specific definition:
+
+	"[font index],[font translation]"
+	
+If only a single value is provided it's treated as a global translation to use across all fonts. Only the first one
+is accepted.
+
+	"[font translation]"
+	
+Multiple translations can be defined per damage type based on font index.
+
+	"[font index],[font translation]:[second font index],[second font translation]"
+	
+This will change the translation based off which font settings the player is using, that way damage numbers can always
+look "correct" regardless of which style of font was chosen. Duplicate entries in the chain will be ignored. This can
+be mixed with the global definition to allow specific translations for specific fonts and then a default one for the rest.
+
+---
+
+Damage types for death and game types can be defined separately.
+
+	GAMENAME_DEATH_DAMAGETYPE
+	
+GAMENAME can be one of the following:
+	-DOOM
+	-HERETIC
+	-HEXEN
+	-STRIFE
+	-CHEX
+	
+If no game name is provided that is the assumed translation to use for all games not defined. If DEATH is not specified that
+translation is assumed to be used on death for that damage type as well.
+
+The DEFAULT key also supports specific game and death translations. DEFAULT is used if no proper translations are found.
+
+	GAMENAME_DEATH_DEFAULT
+**********************************/
+
+DEFAULT = "2";
+DEATH_DEFAULT = "17";
+
+HITSCAN = "20";
+MELEE = "4";
+BFGSPLASH = "3";
+FIRE = "8";
+POISONCLOUD = "19";
+POISON = "19";
+ELECTRIC = "10";
+ICE = "22";
+DROWNING = "13";
+SLIME = "16";
+CRUSH = "0";
+TELEFRAG = "6";
+FALLING = "0";
+SUICIDE = "6";
+EXIT = "0";
+RAILGUN = "7";
+DISINTEGRATE = "6";
+MASSACRE = "6";
+DRAINLIFE = "3";
+EXTREME = "6";
+INSTANTDEATH = "6";
+QUAKE = "0";

@@ -1,0 +1,53 @@
+OptionValue "DamageNumberType"
+{
+	0, "Bundled"
+	1, "Separated"
+}
+
+OptionValue "DamageNumberActors"
+{
+	0, "Monsters only"
+	1, "Everything"
+}
+
+OptionValue "DamageNumberDamageTypes"
+{
+	0, "Player only"
+	1, "Everything"
+}
+
+OptionValue "DamageNumberFont"
+{
+	0, "Small font"
+	1, "New small font"
+	2, "Alternative small font"
+	3, "Original small font"
+	4, "Small font 2"
+	5, "Big font"
+	6, "Original big font"
+	7, "Intermission font"
+	8, "Console font"
+	9, "New console font"
+}
+
+AddOptionMenu "OptionsMenu"
+{
+	Submenu "Damage Number Options", "DamageNumberOptionsMenu"
+}
+
+OptionMenu "DamageNumberOptionsMenu"
+{
+	Title "Damage Number Options"
+	StaticText ""
+	
+	Option "Enable damage numbers", "damagenumbers_enabled", "YesNo"
+	StaticText ""
+	
+	Option "Multi-hit type", "damagenumbers_type", "DamageNumberType", "damagenumbers_enabled"
+	Option "Show overkill damage", "damagenumbers_allowoverkill", "YesNo", "damagenumbers_enabled"
+	Option "Use death colors", "damagenumbers_allowdeath", "YesNo", "damagenumbers_enabled"
+	Option "Use damage type colors", "damagenumbers_allowdamagetypes", "YesNo", "damagenumbers_enabled"
+	Option "Spawn damage numbers from", "damagenumbers_actortype", "DamageNumberActors", "damagenumbers_enabled"
+	Option "Show damage from", "damagenumbers_damagetype", "DamageNumberDamageTypes", "damagenumbers_enabled"
+	Option "Damage number font", "damagenumbers_fonttype", "DamageNumberFont", "damagenumbers_enabled"
+}
