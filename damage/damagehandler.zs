@@ -1,12 +1,14 @@
 class DamageNumberHandler : EventHandler
 {
+	const EMPTY_STRING = "";
+
 	private ui transient DScreenInfo si;
 	private ui transient Font fonts[10];
 	private ui transient bool bInitialized;
 	private ui transient string game;
 	
 	// Draw behavior
-	private ui transient uint prevMS;
+	private ui transient float prevMS;
 	private ui transient Array<DamageNumber> dms;
 	private ui transient CVar dmgNumFont;
 	private ui transient CVar dmgNumOverkill;
@@ -24,11 +26,11 @@ class DamageNumberHandler : EventHandler
 	// Damage numbers
 	override void RenderUnderlay(RenderEvent e)
 	{
-		uint curTime = MSTime();
+		double curTime = MSTimeF();
 		if (!prevMS)
 			prevMS = curTime;
 		
-		uint deltatime = curTime - prevMS;
+		double deltatime = curTime - prevMS;
 		if (deltaTime > 200)
 			deltaTime = 200;
 		
@@ -40,7 +42,7 @@ class DamageNumberHandler : EventHandler
 		[cx, cy, cw, ch] = Screen.GetClipRect();
 		
 		Screen.SetClipRect(si.minBoundary.x, si.minBoundary.y, si.maxBoundary.x-si.minBoundary.x, si.maxBoundary.y-si.minBoundary.y);
-		for (uint i = 0; i < dms.Size(); ++i)
+		for (int i = 0; i < dms.Size(); ++i)
 		{
 			if (!dms[i])
 			{
@@ -107,50 +109,50 @@ class DamageNumberHandler : EventHandler
 		int fontIndex = clamp(dmgNumFont.GetInt(), 0, 9);
 		Font curFont = fonts[fontIndex];
 		bool allowdt = dmgNumHitTypes.GetBool();
-		for (uint i = 0; i < damaged.Size(); ++i)
+		for (int i = 0; i < damaged.Size(); ++i)
 		{
 			if (!damaged[i])
 				continue;
 			
-			string lookUp = "";
+			string lookUp = EMPTY_STRING;
 			string dt = damaged[i].damageType;
 			// Look up death translation value
 			if (damaged[i].bDied && dmgNumDeath.GetBool())
 			{
-				lookUp = allowdt ? FindStringValue(String.Format("%s_DEATH_%s", game, dt)) : "";
-				if (lookUp == "")
+				lookUp = allowdt ? FindStringValue(String.Format("%s_DEATH_%s", game, dt)) : EMPTY_STRING;
+				if (lookUp == EMPTY_STRING)
 				{
-					lookUp = allowdt ? FindStringValue(String.Format("DEATH_%s", dt)) : "";
-					if (lookUp == "")
+					lookUp = allowdt ? FindStringValue(String.Format("DEATH_%s", dt)) : EMPTY_STRING;
+					if (lookUp == EMPTY_STRING)
 					{
 						lookUp = FindStringValue(String.Format("%s_DEATH_DEFAULT", game));
-						if (lookUp == "")
+						if (lookUp == EMPTY_STRING)
 							lookUp = FindStringValue("DEATH_DEFAULT");
 					}
 				}
 			}
 			
 			// Look up regular translation value
-			if (lookUp == "")
+			if (lookUp == EMPTY_STRING)
 			{
-				lookUp = allowdt ? FindStringValue(String.Format("%s_%s", game, dt)) : "";
-				if (lookUp == "")
+				lookUp = allowdt ? FindStringValue(String.Format("%s_%s", game, dt)) : EMPTY_STRING;
+				if (lookUp == EMPTY_STRING)
 				{
-					lookUp = allowdt ? FindStringValue(dt) : "";
-					if (lookUp == "")
+					lookUp = allowdt ? FindStringValue(dt) : EMPTY_STRING;
+					if (lookUp == EMPTY_STRING)
 					{
 						lookUp = FindStringValue(String.Format("%s_DEFAULT", game));
-						if (lookUp == "")
+						if (lookUp == EMPTY_STRING)
 							lookUp = FindStringValue("DEFAULT");
 					}
 				}
 			}
 			
 			// Clean up the value
-			lookUp.Replace("\n", "");
-			lookUp.Replace("\r", "");
-			lookUp.Replace("\t", "");
-			lookUp.Replace(" ", "");
+			lookUp.Replace("\n", EMPTY_STRING);
+			lookUp.Replace("\r", EMPTY_STRING);
+			lookUp.Replace("\t", EMPTY_STRING);
+			lookUp.Replace(" ", EMPTY_STRING);
 			
 			int trans = Font.CR_UNDEFINED;
 			bool setFont = false;
@@ -158,10 +160,11 @@ class DamageNumberHandler : EventHandler
 			bool setGlobal = false;
 			
 			// Parse translations
+			// TODO: Good lord, precache these
 			Array<string> fontTypes;
 			lookUp.Split(fontTypes, ":");
 			Array<DamageFontInfo> fontInfos;
-			for (uint j = 0; j < fontTypes.Size(); ++j)
+			for (int j = 0; j < fontTypes.Size(); ++j)
 			{
 				Array<string> data;
 				fontTypes[j].Split(data, ",");
@@ -262,8 +265,8 @@ class DamageNumberHandler : EventHandler
 		
 		bClearNextTick = true;
 		int type = clamp(dmgNumType.GetInt(), 0, 1);
-		uint i = FindDamageActor(e.thing);
-		if (type == 1 || i >= damaged.Size() || !damaged[i])
+		int i = FindDamageActor(e.thing);
+		if (type == 1 || i == -1 || !damaged[i])
 		{
 			let dmg = new("DamageInfo");
 			dmg.mo = e.thing;
@@ -287,18 +290,17 @@ class DamageNumberHandler : EventHandler
 		}
 	}
 	
-	private uint FindDamageActor(Actor mo)
+	private int FindDamageActor(Actor mo)
 	{
-		uint i;
-		for (; i < damaged.Size(); ++i)
+		for (int i = 0; i < damaged.Size(); ++i)
 		{
 			if (!damaged[i])
 				continue;
 			
 			if (damaged[i].mo == mo)
-				break;
+				return i;
 		}
 		
-		return i;
+		return -1;
 	}
 }

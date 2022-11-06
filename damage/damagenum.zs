@@ -1,22 +1,26 @@
-class DamageNumber : Object ui
+class DamageNumber ui
 {
-	private int translation;
+	private int8 translation;
 	private Font f;
-	private Vector3 pos;
-	private Vector3 vel;
+	private FVector3 pos;
+	private FVector3 vel;
 	private string val;
-	private double alpha;
-	private double lifeTime;
+	private float alpha;
+	private float lifeTime;
+
+	private int8 width;
 	
 	virtual void Initialize(Vector3 p, Font fnt, int fntTrans, string v)
 	{
 		f = fnt;
 		translation = fntTrans;
 		pos = p;
-		vel = (Actor.AngleToVector(FRandom[DamageNumber](double.epsilon,360), FRandom[DamageNumber](48,80)), FRandom[DamageNumber](48,80));
+		vel = (Actor.AngleToVector(FRandom[DamageNumber](0,360), FRandom[DamageNumber](48,80)), FRandom[DamageNumber](48,80));
 		val = v;
-		alpha = 1;
+		alpha = 1.0;
 		lifeTime = 0.75;
+
+		width = f.StringWidth(val) / 2;
 	}
 	
 	virtual void Draw(double t, DScreenInfo info)
@@ -29,15 +33,15 @@ class DamageNumber : Object ui
 			if (inView)
 			{
 				Vector2 scale = (2, 2*level.pixelStretch) * info.scale;
-				p.x -= f.StringWidth(val)*scale.x / 2;
-				p.y -= f.GetHeight()*scale.y;
+				p.x -= width * scale.x;
+				p.y -= f.GetHeight() * scale.y;
 				
 				Screen.DrawText(f, translation, p.x, p.y, val, DTA_Alpha, alpha,
 								DTA_ScaleX, scale.x, DTA_ScaleY, scale.y);
 			}
 		}
 		
-		if (menuactive && !multiplayer)
+		if (!multiplayer && (menuActive || consoleState != c_up))
 			return;
 		
 		lifeTime -= t;
@@ -54,18 +58,18 @@ class DamageNumber : Object ui
 	}
 }
 
-class DamageInfo : Object
+class DamageInfo
 {
 	Actor mo;
 	int damage;
-	name damageType;
-	Vector3 pos;
+	Name damageType;
+	FVector3 pos;
 	bool bDied;
 	int overkillDamage;
 }
 
-class DamageFontInfo : Object
+class DamageFontInfo
 {
-	int fontIndex;
-	int fontTranslation;
+	int8 fontIndex;
+	int8 fontTranslation;
 }

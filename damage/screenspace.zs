@@ -1,13 +1,15 @@
 struct DScreenInfo ui
 {
+	const STANDARD_RATIO = 4 / 3.;
+
 	Vector3 forward, right, down;
-	Vector3 pos;
-	double scale;
+	FVector3 pos;
+	float scale;
 	
-	Vector2 resolution;
-	Vector2 origin;
-	Vector2 size;
-	Vector2 minBoundary, maxBoundary;
+	FVector2 resolution;
+	FVector2 origin;
+	FVector2 size;
+	FVector2 minBoundary, maxBoundary;
 	
 	void SetScreenInformation(Vector3 angs, Vector3 cam, double fov)
 	{
@@ -30,7 +32,7 @@ struct DScreenInfo ui
 		
 		pos = cam;
 		Vector2 fovScale;
-		fovScale.x = tan(fov / 2) * aspect / (4/3.);
+		fovScale.x = tan(fov / 2) * aspect / STANDARD_RATIO;
 		fovScale.y = fovScale.x / aspect;
 		
 		angs.y = atan2(sin(angs.y)*level.pixelStretch, cos(angs.y));
