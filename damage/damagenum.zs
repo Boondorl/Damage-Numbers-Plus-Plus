@@ -1,75 +1,61 @@
 class DamageNumber ui
 {
+	private Font fnt;
 	private int8 translation;
-	private Font f;
-	private FVector3 pos;
-	private FVector3 vel;
-	private string val;
+	private string number;
+	private int8 width, height;
+	private Vector3 pos, vel;
 	private float alpha;
 	private float lifeTime;
 
-	private int8 width;
-	
-	virtual void Initialize(Vector3 p, Font fnt, int fntTrans, string v)
+	static DamageNumber Create(Vector3 pos, Font fnt, int translation, string number, Vector3 vel = (0.0, 0.0, 0.0), double alpha = 1.0, double lifeTime = 0.75)
 	{
-		f = fnt;
-		translation = fntTrans;
-		pos = p;
-		vel = (Actor.AngleToVector(FRandom[DamageNumber](0,360), FRandom[DamageNumber](48,80)), FRandom[DamageNumber](48,80));
-		val = v;
-		alpha = 1.0;
-		lifeTime = 0.75;
+		let dn = new("DamageNumber");
+		dn.fnt = fnt;
+		dn.translation = translation;
+		dn.number = number;
+		dn.width = dn.fnt.StringWidth(dn.number) / 2;
+		dn.height = dn.fnt.GetHeight();
 
-		width = f.StringWidth(val) / 2;
+		dn.pos = pos;
+		dn.vel = vel;
+		dn.alpha = alpha;
+		dn.lifeTime = lifeTime;
+
+		return dn;
 	}
 	
-	virtual void Draw(double t, DScreenInfo info)
+	virtual bool Draw(double t, DScreenInfo info)
 	{
-		if (!automapactive)
+		if (!autoMapActive)
 		{
-			Vector2 p;
-			bool inView;
-			[p, inView] = info.ConvertPoint(pos);
+			let [p, inView] = info.ConvertPoint(pos);
 			if (inView)
 			{
-				Vector2 scale = (2, 2*level.pixelStretch) * info.scale;
+				Vector2 scale = (2.0, 2.0 * level.pixelStretch) * info.scale;
 				p.x -= width * scale.x;
-				p.y -= f.GetHeight() * scale.y;
+				p.y -= height * scale.y;
 				
-				Screen.DrawText(f, translation, p.x, p.y, val, DTA_Alpha, alpha,
+				Screen.DrawText(fnt, translation, p.x, p.y, number, DTA_Alpha, alpha,
 								DTA_ScaleX, scale.x, DTA_ScaleY, scale.y);
 			}
 		}
 		
-		if (!multiplayer && (menuActive || consoleState != c_up))
-			return;
+		if (menuActive == Menu.On || menuActive == Menu.WaitKey || consoleState != c_up)
+			return true;
 		
 		lifeTime -= t;
-		if (lifeTime <= 0)
+		if (lifeTime <= 0.0)
 		{
 			Destroy();
-			return;
+			return false;
 		}
 		
-		pos += vel*t;
-		vel.z -= 384*t;
+		pos += vel * t;
+		vel.z -= 384.0 * t;
 		if (lifeTime < 0.25)
-			alpha -= t*4;
+			alpha -= t * 4.0;
+
+		return true;
 	}
-}
-
-class DamageInfo
-{
-	Actor mo;
-	int damage;
-	Name damageType;
-	FVector3 pos;
-	bool bDied;
-	int overkillDamage;
-}
-
-class DamageFontInfo
-{
-	int8 fontIndex;
-	int8 fontTranslation;
 }

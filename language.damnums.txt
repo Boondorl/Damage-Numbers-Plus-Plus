@@ -14,9 +14,11 @@ INTERMISSION FONT = 7
 CONSOLE FONT = 8
 NEW CONSOLE FONT = 9
 
+Custom fonts can be specified by using a name instead of an index e.g. MyCustomFont.
+
 Translation indices:
 
-UNDEFINED = -1
+NATIVE = -1
 BRICK = 0
 TAN = 1
 GREY = 2
@@ -48,7 +50,7 @@ TEAL = 25
 
 The key for your value should be the exact name of the damage type. Each value follows a specific definition:
 
-	"[font index],[font translation]"
+	"[font index/name],[font translation]"
 	
 If only a single value is provided it's treated as a global translation to use across all fonts. Only the first one
 is accepted.
@@ -57,7 +59,7 @@ is accepted.
 	
 Multiple translations can be defined per damage type based on font index.
 
-	"[font index],[font translation]:[second font index],[second font translation]"
+	"[first font index/name],[first font translation]:[second font index/name],[second font translation]"
 	
 This will change the translation based off which font settings the player is using, that way damage numbers can always
 look "correct" regardless of which style of font was chosen. Duplicate entries in the chain will be ignored. This can
@@ -67,7 +69,7 @@ be mixed with the global definition to allow specific translations for specific 
 
 Damage types for death and game types can be defined separately.
 
-	GAMENAME_DEATH_DAMAGETYPE
+	GAMENAME_[DEATH_]DAMAGETYPE
 	
 GAMENAME can be one of the following:
 	-DOOM
@@ -81,7 +83,7 @@ translation is assumed to be used on death for that damage type as well.
 
 The DEFAULT key also supports specific game and death translations. DEFAULT is used if no proper translations are found.
 
-	GAMENAME_DEATH_DEFAULT
+	GAMENAME_[DEATH_]DEFAULT
 **********************************/
 
 DEFAULT = "2";

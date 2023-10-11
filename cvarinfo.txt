@@ -3,6 +3,6 @@ user int damagenumbers_type = 0;
 user bool damagenumbers_allowdeath = true;
 user bool damagenumbers_allowdamagetypes = true;
 user bool damagenumbers_allowoverkill = false;
-user int damagenumbers_fonttype = 5;
+user string damagenumbers_fonttype = "5";
 user int damagenumbers_damagetype = 0;
 user int damagenumbers_actortype = 0;
