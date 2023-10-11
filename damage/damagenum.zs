@@ -1,19 +1,19 @@
 class DamageNumber ui
 {
 	private Font fnt;
-	private int8 translation;
+	private int translation;
 	private string number;
-	private int8 width, height;
+	private int width, height;
 	private Vector3 pos, vel;
-	private float alpha;
-	private float lifeTime;
+	private double alpha;
+	private double lifeTime;
 
-	static DamageNumber Create(Vector3 pos, Font fnt, int translation, string number, Vector3 vel = (0.0, 0.0, 0.0), double alpha = 1.0, double lifeTime = 0.75)
+	static DamageNumber Create(Vector3 pos, Font fnt, int translation, int number, Vector3 vel = (0.0, 0.0, 0.0), double alpha = 1.0, double lifeTime = 0.75)
 	{
 		let dn = new("DamageNumber");
 		dn.fnt = fnt;
 		dn.translation = translation;
-		dn.number = number;
+		dn.number = String.Format("%d", number);
 		dn.width = dn.fnt.StringWidth(dn.number) / 2;
 		dn.height = dn.fnt.GetHeight();
 

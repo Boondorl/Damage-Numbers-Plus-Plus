@@ -11,11 +11,8 @@ class DamageInfo ui
 	{
 		let di = new("DamageInfo");
 		di.mo = mo;
-		di.damage = damage;
-		di.damageType = damageType;
-		di.bDied = di.mo.bKilled;
-		di.overkillDamage = di.bDied ? abs(di.mo.health) : 0;
-		di.pos = di.mo.pos.PlusZ((di.bDied ? di.mo.default.height : di.mo.height) - di.mo.floorClip);
+		di.pos = di.mo.pos.PlusZ((di.mo.bKilled ? di.mo.default.height : di.mo.height) - di.mo.floorClip);
+		di.Update(damage, damageType);
 
 		return di;
 	}
@@ -35,15 +32,13 @@ class DamageInfo ui
 class DamageFontInfo ui
 {
 	Font fnt;
-	int8 translation;
-	bool bGlobal;
+	int translation;
 
-	static DamageFontInfo Create(Font fnt, int translation, bool bGlobal = false)
+	static DamageFontInfo Create(Font fnt, int translation)
 	{
 		let dfi = new("DamageFontInfo");
 		dfi.fnt = fnt;
 		dfi.translation = translation;
-		dfi.bGlobal = bGlobal;
 
 		return dfi;
 	}
@@ -51,7 +46,69 @@ class DamageFontInfo ui
 
 class DamageFontInfoBucket ui
 {
+	int defaultTranslation;
 	Array<DamageFontInfo> dmgFonts;
+
+	static DamageFontInfoBucket Create(string translations, DamageNumberHandler handler)
+	{
+		let dfib = new("DamageFontInfoBucket");
+		dfib.defaultTranslation = Font.CR_UNTRANSLATED;
+
+		Array<string> fontTypes;
+		translations.Split(fontTypes, ":", TOK_SKIPEMPTY);
+		foreach (type : fontTypes)
+		{
+			Array<string> translation;
+			type.Split(translation, ",", TOK_SKIPEMPTY);
+			int s = translation.Size();
+			if (!s)
+				continue;
+			
+			if (s == 1)
+			{
+				dfib.defaultTranslation = handler.FetchTranslation(translation[0]);
+			}
+			else
+			{
+				Font fnt = handler.FetchFont(translation[0]);
+				int trans = handler.FetchTranslation(translation[1]);
+
+				int i;
+				for (; i < dfib.dmgFonts.Size(); ++i)
+				{
+					if (dfib.dmgFonts[i].fnt == fnt)
+					{
+						dfib.dmgFonts[i].translation = trans;
+						break;
+					}
+				}
+
+				if (i >= dfib.dmgFonts.Size())
+					dfib.dmgFonts.Push(DamageFontInfo.Create(fnt, trans));
+			}
+		}
+
+		return dfib;
+	}
+
+	int GetFontTranslation(Font fnt)
+	{
+		int translation;
+		int i;
+		for (; i < dmgFonts.Size(); ++i)
+		{
+			if (dmgFonts[i].fnt == fnt)
+			{
+				translation = dmgFonts[i].translation;
+				break;
+			}
+		}
+		
+		if (i >= dmgFonts.Size())
+			translation = defaultTranslation;
+
+		return translation;
+	}
 }
 
 class DamageNumberHandler : StaticEventHandler
@@ -75,13 +132,28 @@ class DamageNumberHandler : StaticEventHandler
 	private Actor currentlyDamaging;
 	private Name currentDamageType;
 
+	ui int FetchTranslation(string translation)
+	{
+		int index = Font.FindFontColor(translation);
+		return index != Font.CR_UNTRANSLATED ? index : translation.toInt();
+	}
+
+	ui Font FetchFont(string fnt)
+	{
+		Font f = Font.FindFont(fnt);
+		if (!f)
+			f = globalFonts[clamp(fnt.ToInt(), 0, globalFonts.Size()-1)];
+
+		return f;
+	}
+
 	override void InterfaceProcess(ConsoleEvent e)
 	{
 		if (!e.isManual && e.name ~== "DamagePopupEvent")
 		{
 			int type = clamp(CVar.GetCVar("damagenumbers_type", players[consolePlayer]).GetInt(), 0, 1);
-			int i = FindDamageActor(currentlyDamaging);
-			if (type == 1 || i >= damaged.Size())
+			int i = type == 1 ? damaged.Size() : FindDamageActor(currentlyDamaging);
+			if (i >= damaged.Size())
 				damaged.Push(DamageInfo.Create(currentlyDamaging, e.args[0], currentDamageType));
 			else
 				damaged[i].Update(e.args[0], currentDamageType);
@@ -90,7 +162,7 @@ class DamageNumberHandler : StaticEventHandler
 
 	private ui int FindDamageActor(Actor mo)
 	{
-		int i = 0;
+		int i;
 		for (; i < damaged.Size(); ++i)
 		{
 			if (damaged[i].mo == mo)
@@ -223,7 +295,7 @@ class DamageNumberHandler : StaticEventHandler
 			if (!dmgNumOverkill)
 				dmg -= hit.overkillDamage;
 			
-			dmgNums.Push(DamageNumber.Create(hit.pos, curFont, trans, String.Format("%d", dmg),
+			dmgNums.Push(DamageNumber.Create(hit.pos, curFont, trans, dmg,
 										(Actor.AngleToVector(FRandom[DamageNumber](0.0, 360.0), FRandom[DamageNumber](48.0, 80.0)), FRandom[DamageNumber](48.0, 80.0))));
 		}
 
@@ -236,67 +308,16 @@ class DamageNumberHandler : StaticEventHandler
 		return StringTable.Localize(localized) == key ? EMPTY_STRING : localized;
 	}
 
-	private ui int FetchFontTranslation(Name key, Font curFont)
+	private ui int FetchFontTranslation(Name key, Font fnt)
 	{
 		let fontBucket = fonts.GetIfExists(key);
 		if (!fontBucket)
 		{
-			fontBucket = new("DamageFontInfoBucket");
-			string translations = StringTable.Localize(key);
-		
-			bool setGlobal;
-			Array<string> fontTypes;
-			translations.Split(fontTypes, ":");
-			foreach (type : fontTypes)
-			{
-				Array<string> translation;
-				type.Split(translation, ",");
-				int s = translation.Size();
-				if (!s)
-					continue;
-				
-				if (s == 1)
-				{
-					if (setGlobal)
-						continue;
-					
-					setGlobal = true;
-					fontBucket.dmgFonts.Insert(0, DamageFontInfo.Create(null, translation[0].ToInt(), true));
-				}
-				else
-				{
-					fontBucket.dmgFonts.Push(DamageFontInfo.Create(FetchFont(translation[0]), translation[1].ToInt()));
-				}
-			}
-
+			fontBucket = DamageFontInfoBucket.Create(StringTable.Localize(key), self);
 			fonts.Insert(key, fontBucket);
 		}
-		
-		bool setFont;
-		int trans;
-		foreach (fInfo : fontBucket.dmgFonts)
-		{
-			if (fInfo.fnt == curFont)
-			{
-				setFont = true;
-				trans = fInfo.translation;
-				break;
-			}
-		}
-		
-		if (!setFont && fontBucket.dmgFonts[0].bGlobal)
-			trans = fontBucket.dmgFonts[0].translation;
 
-		return trans;
-	}
-
-	private ui Font FetchFont(string fnt)
-	{
-		Font f = Font.FindFont(fnt);
-		if (!f)
-			f = globalFonts[clamp(fnt.ToInt(), 0, globalFonts.Size()-1)];
-
-		return f;
+		return fontBucket.GetFontTranslation(fnt);
 	}
 
 	// Popup spawning event

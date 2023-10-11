@@ -46,30 +46,32 @@ FIRE = 23
 SAPPHIRE = 24
 TEAL = 25
 
+Custom font translations can be specified by using a name instead of an index e.g. Gold.
+
 ---
 
 The key for your value should be the exact name of the damage type. Each value follows a specific definition:
 
-	"[font index/name],[font translation]"
+	"[font index/name],[font translation index/name]"
 	
-If only a single value is provided it's treated as a global translation to use across all fonts. Only the first one
-is accepted.
+If only a single value is provided it's treated as a default translation to use across all fonts. Later values will
+override previous ones.
 
-	"[font translation]"
+	"[font translation index/name]"
 	
-Multiple translations can be defined per damage type based on font index.
+Multiple translations can be defined per damage type based on the font.
 
-	"[first font index/name],[first font translation]:[second font index/name],[second font translation]"
+	"[first font index/name],[first font translation index/name]:[second font index/name],[second font translation index/name]"
 	
 This will change the translation based off which font settings the player is using, that way damage numbers can always
-look "correct" regardless of which style of font was chosen. Duplicate entries in the chain will be ignored. This can
-be mixed with the global definition to allow specific translations for specific fonts and then a default one for the rest.
+look "correct" regardless of which style of font was chosen. Later values will override previous ones. This can
+be mixed with the default translation to allow specific translations for specific fonts and then a default one for the rest.
 
 ---
 
 Damage types for death and game types can be defined separately.
 
-	GAMENAME_[DEATH_]DAMAGETYPE
+	[GAMENAME_][DEATH_]DAMAGETYPE
 	
 GAMENAME can be one of the following:
 	-DOOM
@@ -83,7 +85,7 @@ translation is assumed to be used on death for that damage type as well.
 
 The DEFAULT key also supports specific game and death translations. DEFAULT is used if no proper translations are found.
 
-	GAMENAME_[DEATH_]DEFAULT
+	[GAMENAME_][DEATH_]DEFAULT
 **********************************/
 
 DEFAULT = "2";
