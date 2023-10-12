@@ -25,14 +25,16 @@ class DamageNumber ui
 		return dn;
 	}
 	
-	virtual bool Draw(double t, DScreenInfo info)
+	bool Draw(double t, double scalar, DamNumGMProjectionCache info)
 	{
 		if (!autoMapActive)
 		{
-			let [p, inView] = info.ConvertPoint(pos);
-			if (inView)
+			Vector3 ndc = info.worldToClip.MultiplyVector3(pos);
+			if (abs(ndc.x) <= 1.0 && abs(ndc.y) <= 1.0 && abs(ndc.z) <= 1.0)
 			{
-				Vector2 scale = (2.0, 2.0 * level.pixelStretch) * info.scale;
+				Vector2 p = DamNumGMGlobalMaths.NDCToViewport(ndc);
+
+				Vector2 scale = (2.0, 2.0 * level.pixelStretch) * scalar;
 				p.x -= width * scale.x;
 				p.y -= height * scale.y;
 				

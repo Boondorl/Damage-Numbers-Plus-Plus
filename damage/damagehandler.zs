@@ -115,6 +115,7 @@ class DamageNumberHandler : StaticEventHandler
 {
 	const EMPTY_STRING = "";
 	const MS_TO_S = 1.0 / 1000.0;
+	const BASE_RES = 1.0 / 1080.0;
 
 	// General font information
 	private ui bool bInitialized;
@@ -123,7 +124,7 @@ class DamageNumberHandler : StaticEventHandler
 	private ui Font globalFonts[10];
 	
 	// Draw behavior
-	private ui DScreenInfo sInfo;
+	private ui DamNumGMProjectionCache sInfo;
 	private ui double prevTime;
 	private ui Array<DamageNumber> dmgNums;
 	private ui Array<DamageInfo> damaged;
@@ -185,16 +186,21 @@ class DamageNumberHandler : StaticEventHandler
 		
 		prevTime = curTime;
 		
-		double frac = delta * MS_TO_S;
-		sInfo.SetScreenInformation((e.viewAngle, e.viewPitch, e.viewRoll), e.viewPos, e.camera.player ? players[consolePlayer].FOV : e.camera.cameraFOV);
+		if (!sInfo)
+			sInfo = new("DamNumGMProjectionCache");
 
+		sInfo.CalculateMatrices(Screen.GetAspectRatio(), e.camera.player ? e.camera.player.fov : e.camera.cameraFOV,
+                                e.viewPos, e.viewAngle, e.viewPitch, e.viewRoll);
+
+		let [x, y, w, h] = Screen.GetViewWindow();
 		let [cx, cy, cw, ch] = Screen.GetClipRect();
-		Screen.SetClipRect(int(sInfo.minBoundary.x), int(sInfo.minBoundary.y),
-							int(sInfo.maxBoundary.x-sInfo.minBoundary.x), int(sInfo.maxBoundary.y-sInfo.minBoundary.y));
+		Screen.SetClipRect(x, y, w, h);
 
+		double frac = delta * MS_TO_S;
+		double scalar = h * BASE_RES;
 		for (int i = dmgNums.Size()-1; i >= 0; --i)
 		{
-			if (!dmgNums[i].Draw(frac, sInfo))
+			if (!dmgNums[i].Draw(frac, scalar, sInfo))
 			{
 				dmgNums.Delete(i);
 				continue;

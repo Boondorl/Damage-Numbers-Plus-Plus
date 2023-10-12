@@ -1,0 +1,1214 @@
+class DamNumGMVariable {
+	private uint id;
+
+	static DamNumGMVariable internalCreate(uint curId) {
+		let ret = new();
+		ret.id = curId;
+		return ret;
+	}
+
+	uint getId() { return self.id; }
+}
+class DamNumGMVariableHasher : DamNumGMHasher {
+	override uint hash(Object o) { return DamNumGMVariable(o).getId(); }
+	override bool eq(Object o0, Object o1) {
+		return DamNumGMVariable(o0).getId() == DamNumGMVariable(o1).getId();
+	}
+}
+
+struct DamNumGMVariableManager {
+	private uint curId;
+
+	DamNumGMVariable createVariable() {
+		let ret = DamNumGMVariable.internalCreate(self.curId);
+		self.curId += 1;
+		return ret;
+	}
+}
+
+class DamNumGMTerm {
+	DamNumGMVariable variable;
+	double coefficient;
+
+	static DamNumGMTerm create(DamNumGMVariable variable, double coefficient) {
+		let ret = new();
+		ret.variable = variable;
+		ret.coefficient = coefficient;
+		return ret;
+	}
+}
+
+class DamNumGMExpr {
+	Array<DamNumGMTerm> terms;
+	double constant;
+
+	static DamNumGMExpr fromConstant(double v) {
+		let ret = new();
+		ret.constant = v;
+		return ret;
+	}
+	static DamNumGMExpr c(double v) { return DamNumGMExpr.fromConstant(v); }
+
+	static DamNumGMExpr fromTerm(DamNumGMTerm term) {
+		let ret = new();
+		ret.terms.push(term);
+		return ret;
+	}
+
+	static DamNumGMExpr fromVariable(DamNumGMVariable variable) {
+		let ret = new();
+		ret.terms.push(DamNumGMTerm.create(variable, 1.0));
+		return ret;
+	}
+	static DamNumGMExpr v(DamNumGMVariable variable) { return DamNumGMExpr.fromVariable(variable); }
+
+	static DamNumGMExpr create() {
+		let ret = new();
+		return ret;
+	}
+
+	void negate() {
+		self.constant = -self.constant;
+		for (let i = 0; i < self.terms.size(); i++) {
+			let t = self.terms[i];
+			t.coefficient = -t.coefficient;
+		}
+	}
+
+	DamNumGMExpr addAssignVariable(DamNumGMVariable variable, double coefficient = 1.0) {
+		self.terms.push(DamNumGMTerm.create(variable, coefficient));
+		return self;
+	}
+	DamNumGMExpr addAssignConstant(double constant) {
+		self.constant += constant;
+		return self;
+	}
+	DamNumGMExpr addAssignExpression(DamNumGMExpr e) {
+		for (let i = 0; i < e.terms.size(); i++) {
+			self.terms.push(e.terms[i]);
+		}
+		self.constant += e.constant;
+		return self;
+	}
+	DamNumGMExpr mulAssign(double coeff) {
+		for (let i = 0; i < self.terms.size(); i++) {
+			self.terms[i].coefficient *= coeff;
+		}
+		self.constant *= coeff;
+		return self;
+	}
+}
+
+struct DamNumGMStrength {
+	static double create(double a, double b, double c, double w) {
+		return
+			clamp(a * w, 0.0, 1000.0) * 1000000.0 +
+			clamp(b * w, 0.0, 1000.0) * 1000.0 +
+			clamp(c * w, 0.0, 1000.0);
+	}
+
+	const REQUIRED = 1001001000.0;
+	const STRONG = 1000000.0;
+	const MEDIUM = 1000.0;
+	const WEAK = 1.0;
+
+	static double clip(double s) {
+		return clamp(s, 0.0, REQUIRED);
+	}
+}
+
+enum DamNumGMRel {
+	DamNumGMRel_LEq,
+	DamNumGMRel_Eq,
+	DamNumGMRel_GEq,
+}
+
+struct DamNumGMConstraintManager {
+	private uint curId;
+
+	DamNumGMConstraint createConstraint(DamNumGMExpr e, DamNumGMRel op, double strength) {
+		let ret = DamNumGMConstraint.internalCreate(e, op, strength, self.curId);
+		self.curId += 1;
+		return ret;
+	}
+}
+
+class DamNumGMConstraint {
+	private DamNumGMExpr expression;
+	private double strength;
+	private DamNumGMRel op;
+	private uint id;
+
+	static DamNumGMConstraint internalCreate(DamNumGMExpr e, DamNumGMRel op, double strength, uint curId) {
+		let ret = new();
+		ret.expression = e;
+		ret.op = op;
+		ret.strength = strength;
+		ret.id = curId;
+		return ret;
+	}
+
+	DamNumGMExpr getExpr() { return self.expression; }
+	DamNumGMRel getOp() { return self.op; }
+	double getStrength() { return self.strength; }
+	uint getId() { return self.id; }
+}
+class DamNumGMConstraintHasher : DamNumGMHasher {
+	override uint hash(Object o) { return DamNumGMConstraint(o).getId(); }
+	override bool eq(Object o0, Object o1) {
+		return DamNumGMConstraint(o0).getId() == DamNumGMConstraint(o1).getId();
+	}
+}
+
+class DamNumGMConstraintBuilderWithRhs {
+	DamNumGMExpr lhs;
+	DamNumGMExpr rhs;
+	DamNumGMRel rel;
+	double strength;
+}
+
+enum DamNumGMSymbolKind {
+	DamNumGMSymbolKind_Invalid,
+	DamNumGMSymbolKind_External,
+	DamNumGMSymbolKind_Slack,
+	DamNumGMSymbolKind_Error,
+	DamNumGMSymbolKind_Dummy,
+}
+
+class DamNumGMSymbol {
+	uint id;
+	DamNumGMSymbolKind kind;
+
+	static DamNumGMSymbol invalid() {
+		let ret = new();
+		ret.id = 0;
+		ret.kind = DamNumGMSymbolKind_Invalid;
+		return ret;
+	}
+
+	static DamNumGMSymbol create(uint id, DamNumGMSymbolKind kind) {
+		let ret = new();
+		ret.id = id;
+		ret.kind = kind;
+		return ret;
+	}
+
+	DamNumGMSymbol clone() {
+		let ret = new();
+		ret.id = self.id;
+		ret.kind = self.kind;
+		return ret;
+	}
+
+	String repr() {
+		let ret = "Symbol(";
+		ret.appendFormat("%d, ", self.id);
+		switch (self.kind) {
+			case DamNumGMSymbolKind_Invalid:  ret.appendFormat("Invalid"); break;
+			case DamNumGMSymbolKind_External: ret.appendFormat("External"); break;
+			case DamNumGMSymbolKind_Slack:    ret.appendFormat("Slack"); break;
+			case DamNumGMSymbolKind_Error:    ret.appendFormat("Error"); break;
+			case DamNumGMSymbolKind_Dummy:    ret.appendFormat("Dummy"); break;
+		}
+		ret.appendFormat(")");
+		return ret;
+	}
+}
+
+class DamNumGMSymbolHasher : DamNumGMHasher {
+	override uint hash(Object o) {
+		let o = DamNumGMSymbol(o);
+		let seed = o.id;
+		hashCombine(seed, o.kind);
+		return seed;
+	}
+	override bool eq(Object o0, Object o1) {
+		let o0 = DamNumGMSymbol(o0);
+		let o1 = DamNumGMSymbol(o1);
+
+		return
+			o0.id == o1.id &&
+			o0.kind == o1.kind;
+	}
+}
+
+class DamNumGMRow {
+	DamNumGMHashMap/*<Symbol, BoxedDouble>*/ cells;
+	double constant;
+
+	static DamNumGMRow create(double constant) {
+		let ret = new();
+		ret.cells = DamNumGMHashMap.create(new("DamNumGMSymbolHasher"));
+		ret.constant = constant;
+		return ret;
+	}
+
+	DamNumGMRow clone() {
+		let ret = new();
+		ret.cells = DamNumGMHashMap.create(new("DamNumGMSymbolHasher"));
+		let iter = self.cells.iter();
+		while (true) {
+			Object ko, vo;
+			[ko, vo] = iter.next();
+			if (ko is "DamNumGMHashUnoccupied") { break; }
+
+			let k = DamNumGMSymbol(ko);
+			let v = DamNumGMBoxedDouble(vo);
+
+			ret.cells.insert(k.clone(), v.clone());
+		}
+		ret.constant = self.constant;
+		return ret;
+	}
+
+	double add(double v) {
+		self.constant += v;
+		return self.constant;
+	}
+
+	void insertSymbol(DamNumGMSymbol s, double coefficient) {
+		let g = self.cells.get(s);
+		if (g is "DamNumGMHashUnoccupied") {
+			if (!DamNumGMGlobalMaths.nearZero(coefficient)) {
+				self.cells.insert(s, DamNumGMBoxedDouble.create(coefficient));
+			}
+		} else {
+			let g = DamNumGMBoxedDouble(g);
+			g.val += coefficient;
+			if (DamNumGMGlobalMaths.nearZero(g.val)) {
+				self.cells.remove(s);
+			}
+		}
+	}
+
+	bool insertRow(DamNumGMRow other, double coefficient) {
+		let constantDiff = other.constant * coefficient;
+		self.constant += constantDiff;
+		let iter = other.cells.iter();
+		while (true) {
+			Object ko, vo;
+			[ko, vo] = iter.next();
+			if (ko is "DamNumGMHashUnoccupied") { break; }
+
+			let s = DamNumGMSymbol(ko);
+			let v = DamNumGMBoxedDouble(vo).val;
+
+			self.insertSymbol(s, v * coefficient);
+		}
+		return constantDiff != 0.0;
+	}
+
+	void remove(DamNumGMSymbol s) {
+		self.cells.remove(s);
+	}
+
+	void reverseSign() {
+		self.constant = -self.constant;
+		let iter = self.cells.iter();
+		while (true) {
+			Object ko, vo;
+			[ko, vo] = iter.next();
+			if (ko is "DamNumGMHashUnoccupied") { break; }
+			let v = DamNumGMBoxedDouble(vo);
+			v.val = -v.val;
+		}
+	}
+
+	void solveForSymbol(DamNumGMSymbol s) {
+		let e = DamNumGMBoxedDouble(self.cells.remove(s)).val;
+		let coeff = -1.0 / e;
+		self.constant *= coeff;
+		let iter = self.cells.iter();
+		while (true) {
+			Object ko, vo;
+			[ko, vo] = iter.next();
+			if (ko is "DamNumGMHashUnoccupied") { break; }
+			let v = DamNumGMBoxedDouble(vo);
+			v.val *= coeff;
+		}
+	}
+
+	void solveForSymbols(DamNumGMSymbol lhs, DamNumGMSymbol rhs) {
+		self.insertSymbol(lhs, -1.0);
+		self.solveForSymbol(rhs);
+	}
+
+	double coefficientFor(DamNumGMSymbol s) {
+		let v = self.cells.get(s);
+		return (!(v is "DamNumGMHashUnoccupied")) ? DamNumGMBoxedDouble(v).val : 0.0;
+	}
+
+	bool substitute(DamNumGMSymbol s, DamNumGMRow row) {
+		let e = self.cells.remove(s);
+		if (!(e is "DamNumGMHashUnoccupied")) {
+			let coeff = DamNumGMBoxedDouble(e).val;
+			return self.insertRow(row, coeff);
+		} else {
+			return false;
+		}
+	}
+}
+
+enum DamNumGMAddConstraintError {
+	DamNumGMAddConstraintError_None,
+	DamNumGMAddConstraintError_DuplicateConstraint,
+	DamNumGMAddConstraintError_UnsatisfiableConstraint,
+}
+
+enum DamNumGMRemoveConstraintError {
+	DamNumGMRemoveConstraintError_None,
+	DamNumGMRemoveConstraintError_UnknownConstraint,
+}
+
+enum DamNumGMAddEditVariableError {
+	DamNumGMAddEditVariableError_None,
+	DamNumGMAddEditVariableError_DuplicateEditVariable,
+	DamNumGMAddEditVariableError_BadRequiredStrength,
+}
+
+enum DamNumGMRemoveEditVariableError {
+	DamNumGMRemoveEditVariableError_None,
+	DamNumGMRemoveEditVariableError_UnknownEditVariable,
+}
+
+enum DamNumGMSuggestValueError {
+	DamNumGMSuggestValueError_None,
+	DamNumGMSuggestValueError_UnknownEditVariable,
+}
+
+class DamNumGMTag {
+	DamNumGMSymbol marker;
+	DamNumGMSymbol other;
+
+	static DamNumGMTag create(DamNumGMSymbol marker = NULL, DamNumGMSymbol other = NULL) {
+		let ret = new();
+		ret.marker = marker;
+		ret.other = other;
+		return ret;
+	}
+}
+
+class DamNumGMEditInfo {
+	DamNumGMTag tag;
+	DamNumGMConstraint constraint;
+	double constant;
+
+	static DamNumGMEditInfo create(DamNumGMTag tag, DamNumGMConstraint constraint, double constant) {
+		let ret = new();
+		ret.tag = tag;
+		ret.constraint = constraint;
+		ret.constant = constant;
+		return ret;
+	}
+}
+
+class DamNumGMVarDataEntry {
+	double value;
+	DamNumGMSymbol symbol;
+	uint count;
+
+	static DamNumGMVarDataEntry create(double value, DamNumGMSymbol symbol, uint count) {
+		let ret = new();
+		ret.value = value;
+		ret.symbol = symbol;
+		ret.count = count;
+		return ret;
+	}
+}
+
+class DamNumGMPublicChangesEntry {
+	DamNumGMVariable variable;
+	double value;
+
+	static DamNumGMPublicChangesEntry create(DamNumGMVariable variable, double value) {
+		let ret = new();
+		ret.variable = variable;
+		ret.value = value;
+		return ret;
+	}
+}
+
+class DamNumGMSolver {
+	private DamNumGMHashMap/*<Constraint, Tag>*/ cns;
+	private DamNumGMHashMap/*<Variable, VarDataEntry>*/ varData;
+	private DamNumGMHashMap/*<Symbol, Variable>*/ varForSymbol;
+	private Array<DamNumGMPublicChangesEntry> publicChanges;
+	private DamNumGMHashSet/*<Variable>*/ changed;
+	private bool shouldClearChanges;
+	private DamNumGMHashMap/*<Symbol, Row>*/ rows;
+	private DamNumGMHashMap/*<Variable, EditInfo>*/ edits;
+	private Array<DamNumGMSymbol> infeasibleRows;
+	private DamNumGMRow objective;
+	private /* Nullable */ DamNumGMRow artificial;
+	private uint idTick;
+
+	private DamNumGMVariableManager variableManager;
+	DamNumGMConstraintManager constraintManager;
+
+	static DamNumGMSolver create() {
+		let constraintHasher = new("DamNumGMConstraintHasher");
+		let variableHasher = new("DamNumGMVariableHasher");
+		let symbolHasher = new("DamNumGMSymbolHasher");
+
+		let ret = new();
+		ret.cns = DamNumGMHashMap.create(constraintHasher);
+		ret.varData = DamNumGMHashMap.create(variableHasher);
+		ret.varForSymbol = DamNumGMHashMap.create(symbolHasher);
+		/* ret.publicChanges = default; */
+		ret.changed = DamNumGMHashSet.create(variableHasher);
+		ret.shouldClearChanges = false;
+		ret.rows = DamNumGMHashMap.create(symbolHasher);
+		ret.edits = DamNumGMHashMap.create(variableHasher);
+		/* ret.infeasibleRows = default; */
+		ret.objective = DamNumGMRow.create(0.0);
+		ret.artificial = NULL;
+		ret.idTick = 1;
+
+		return ret;
+	}
+
+	DamNumGMVariable createVariable() {
+		return self.variableManager.createVariable();
+	}
+
+	static void assertNoErr(int errcode) {
+		if (errcode != 0) { throwAbortException("err %d", errcode); }
+	}
+
+	DamNumGMAddConstraintError, DamNumGMConstraint addConstraintFromRelation(
+		DamNumGMExpr lhs,
+		Name op,
+		DamNumGMExpr rhs,
+		double strength = DamNumGMStrength.REQUIRED
+	) {
+		rhs.negate();
+		lhs.addAssignExpression(rhs);
+		if (op != '==' && op != '<=' && op != '>=') {
+			throwAbortException("invalid op string '%s'", op);
+		}
+		let op = (op == '==') ? DamNumGMRel_Eq : (op == '<=') ? DamNumGMRel_Leq : DamNumGMRel_Geq;
+		let constraint = self.constraintManager.createConstraint(lhs, op, strength);
+		return self.addConstraint(constraint), constraint;
+	}
+
+	DamNumGMAddConstraintError addConstraint(DamNumGMConstraint constraint) {
+		if (self.cns.containsKey(constraint)) {
+			return DamNumGMAddConstraintError_DuplicateConstraint;
+		}
+
+		DamNumGMRow row; DamNumGMTag tag;
+		[row, tag] = self.createRow(constraint);
+		let subject = chooseSubject(row, tag);
+
+		if (subject.kind == DamNumGMSymbolKind_Invalid && allDummies(row)) {
+			if (!DamNumGMGlobalMaths.nearZero(row.constant)) {
+				return DamNumGMAddConstraintError_UnsatisfiableConstraint;
+			} else {
+				subject = tag.marker;
+			}
+		}
+		if (subject.kind == DamNumGMSymbolKind_Invalid) {
+			if (!self.addWithArtificialVariable(row)) {
+				return DamNumGMAddConstraintError_UnsatisfiableConstraint;
+			}
+		} else {
+			row.solveForSymbol(subject);
+			self.substitute(subject, row);
+
+			if (subject.kind == DamNumGMSymbolKind_External && row.constant != 0.0) {
+				let v = DamNumGMVariable(self.varForSymbol.get(subject));
+				self.varChanged(v);
+			}
+			self.rows.insert(subject, row);
+		}
+
+		self.cns.insert(constraint, tag);
+
+		let objective = self.objective;
+		self.optimise(objective);
+
+		return DamNumGMAddConstraintError_None;
+	}
+
+	DamNumGMRemoveConstraintError removeConstraint(DamNumGMConstraint constraint) {
+		let t = self.cns.remove(constraint);
+		if (t is "DamNumGMHashUnoccupied") {
+			return DamNumGMRemoveConstraintError_UnknownConstraint;
+		}
+		let tag = DamNumGMTag(t);
+
+		self.removeConstraintEffects(constraint, tag);
+
+		if (self.rows.remove(tag.marker) is "DamNumGMHashUnoccupied") {
+			DamNumGMSymbol leaving; DamNumGMRow row;
+			[leaving, row] = self.getMarkerLeavingRow(tag.marker);
+			row.solveForSymbols(leaving, tag.marker);
+			self.substitute(tag.marker, row);
+		}
+
+		let objective = self.objective;
+		self.optimise(objective);
+
+		let cexpr = constraint.getExpr();
+		for (let i = 0; i < cexpr.terms.size(); i++) {
+			let term = cexpr.terms[i];
+			if (!DamNumGMGlobalMaths.nearZero(term.coefficient)) {
+				let shouldRemove = false;
+				let v = self.varData.get(term.variable);
+				if (!(v is "DamNumGMHashUnoccupied")) {
+					let v = DamNumGMVarDataEntry(v);
+					v.count -= 1;
+					shouldRemove = v.count == 0;
+				}
+				if (shouldRemove) {
+					self.varForSymbol.remove(DamNumGMVarDataEntry(self.varData.get(term.variable)).symbol);
+					self.varData.remove(term.variable);
+				}
+			}
+		}
+
+		return DamNumGMRemoveConstraintError_None;
+	}
+
+	bool hasConstraint(DamNumGMConstraint constraint) {
+		return self.cns.containsKey(constraint);
+	}
+
+	DamNumGMAddEditVariableError addEditVariable(DamNumGMVariable v, double strength) {
+		if (self.edits.containsKey(v)) {
+			return DamNumGMAddEditVariableError_DuplicateEditVariable;
+		}
+		let strength = DamNumGMStrength.clip(strength);
+		if (strength == DamNumGMStrength.REQUIRED) {
+			return DamNumGMAddEditVariableError_BadRequiredStrength;
+		}
+		let cn = self.constraintManager.createConstraint(
+			DamNumGMExpr.fromTerm(DamNumGMTerm.create(v, 1.0)),
+			DamNumGMRel_Eq,
+			strength
+		);
+		{
+			let err = self.addConstraint(cn);
+			if (err != 0) { throwAbortException("shouldn't happen"); }
+		}
+		self.edits.insert(
+			v,
+			DamNumGMEditInfo.create(
+				DamNumGMTag(self.cns.get(cn)),
+				cn,
+				0.0
+			)
+		);
+
+		return DamNumGMAddEditVariableError_None;
+	}
+
+	DamNumGMRemoveEditVariableError removeEditVariable(DamNumGMVariable v) {
+		let e = self.edits.remove(v);
+		if (!(e is "DamNumGMHashUnoccupied")) {
+			let constraint = DamNumGMEditInfo(e).constraint;
+			let err = self.removeConstraint(constraint);
+			if (err == DamNumGMRemoveConstraintError_UnknownConstraint) {
+				throwAbortException("Edit constraint not in system.");
+			}
+			return DamNumGMRemoveEditVariableError_None;
+		} else {
+			return DamNumGMRemoveEditVariableError_UnknownEditVariable;
+		}
+	}
+
+	bool hasEditVariable(DamNumGMVariable v) {
+		return self.edits.containsKey(v);
+	}
+
+	DamNumGMSuggestValueError suggestValue(DamNumGMVariable variable, double value) {
+		let i = self.edits.get(variable);
+		if (i is "DamNumGMHashUnoccupied") {
+			return DamNumGMSuggestValueError_UnknownEditVariable;
+		}
+		let info = DamNumGMEditInfo(i);
+		let infoTagMarker = info.tag.marker;
+		let infoTagOther = info.tag.other;
+		let delta = value - info.constant;
+		info.constant = value;
+
+		{
+			let rm = self.rows.get(infoTagMarker);
+			let ro = self.rows.get(infoTagOther);
+			if (!(rm is "DamNumGMHashUnoccupied")) {
+				let row = DamNumGMRow(rm);
+				if (row.add(-delta) < 0.0) {
+					infeasibleRows.push(infoTagMarker);
+				}
+			} else if (!(ro is "DamNumGMHashUnoccupied")) {
+				let row = DamNumGMRow(ro);
+				if (row.add(delta) < 0.0) {
+					infeasibleRows.push(infoTagOther);
+				}
+			} else {
+				let iter = self.rows.iter();
+				while (true) {
+					Object ko, vo;
+					[ko, vo] = iter.next();
+					if (ko is "DamNumGMHashUnoccupied") { break; }
+
+					let symbol = DamNumGMSymbol(ko);
+					let row = DamNumGMRow(vo);
+
+					let coeff = row.coefficientFor(infoTagMarker);
+					let diff = delta * coeff;
+					if (diff != 0.0 && symbol.kind == DamNumGMSymbolKind_External) {
+						let v = DamNumGMVariable(self.varForSymbol.get(symbol));
+						if (self.shouldClearChanges) {
+							self.changed.clear();
+							self.shouldClearChanges = false;
+						}
+						self.changed.insert(v);
+					}
+					if (
+						coeff != 0.0 &&
+						row.add(diff) < 0.0 &&
+						symbol.kind != DamNumGMSymbolKind_External
+					) {
+						infeasibleRows.push(symbol);
+					}
+				}
+			}
+		}
+
+		self.dualOptimise();
+
+		return DamNumGMSuggestValueError_None;
+	}
+
+	private void varChanged(DamNumGMVariable v) {
+		if (self.shouldClearChanges) {
+			self.changed.clear();
+			self.shouldClearChanges = false;
+		}
+		self.changed.insert(v);
+	}
+
+	void fetchChanges(out Array<DamNumGMPublicChangesEntry> ret) {
+		if (self.shouldClearChanges) {
+			self.changed.clear();
+			self.shouldClearChanges = false;
+		} else {
+			self.shouldClearChanges = true;
+		}
+		self.publicChanges.clear();
+
+		let iter = self.changed.iter();
+		while (true) {
+			let vo = iter.next();
+			if (vo is "DamNumGMHashUnoccupied") { break; }
+			let v = DamNumGMVariable(vo);
+			
+			let vd = self.varData.get(v);
+			if (!(vd is "DamNumGMHashUnoccupied")) {
+				let varData = DamNumGMVarDataEntry(vd);
+				let r = self.rows.get(varData.symbol);
+				let newValue = 0.0;
+				if (!(r is "DamNumGMHashUnoccupied")) {
+					newValue = DamNumGMRow(r).constant;
+				}
+				let oldValue = varData.value;
+				if (oldValue != newValue) {
+					self.publicChanges.push(
+						DamNumGMPublicChangesEntry.create(v, newValue)
+					);
+					varData.value = newValue;
+				}
+			}
+		}
+
+		ret.copy(self.publicChanges);
+	}
+
+	void reset() {
+		self.rows.clear();
+		self.cns.clear();
+		self.varData.clear();
+		self.varForSymbol.clear();
+		self.changed.clear();
+		self.shouldClearChanges = false;
+		self.edits.clear();
+		self.infeasibleRows.clear();
+		self.objective = DamNumGMRow.create(0.0);
+		self.artificial = NULL;
+		self.idTick = 1;
+	}
+
+	private DamNumGMSymbol getVarSymbol(DamNumGMVariable v) {
+		DamNumGMVarDataEntry value;
+		let vd = self.varData.get(v);
+		if (!(vd is "DamNumGMHashUnoccupied")) {
+			value = DamNumGMVarDataEntry(vd);
+		} else {
+			let s = DamNumGMSymbol.create(self.idTick, DamNumGMSymbolKind_External);
+			self.varForSymbol.insert(s, v);
+			self.idTick += 1;
+			value = DamNumGMVarDataEntry.create(double.NAN, s, 0);
+			self.varData.insert(v, value);
+		}
+		value.count += 1;
+		return value.symbol;
+	}
+
+	private DamNumGMRow, DamNumGMTag createRow(DamNumGMConstraint constraint) {
+		let expr = constraint.getExpr();
+		let row = DamNumGMRow.create(expr.constant);
+		for (let i = 0; i < expr.terms.size(); i++) {
+			let term = expr.terms[i]; 
+			if (!DamNumGMGlobalMaths.nearZero(term.coefficient)) {
+				let symbol = self.getVarSymbol(term.variable);
+				let o = self.rows.get(symbol);
+				if (!(o is "DamNumGMHashUnoccupied")) {
+					let otherRow = DamNumGMRow(o);
+					row.insertRow(otherRow, term.coefficient);
+				} else {
+					row.insertSymbol(symbol, term.coefficient);
+				}
+			}
+		}
+
+		let objective = self.objective;
+
+		DamNumGMTag tag;
+		let constraintOp = constraint.getOp();
+		switch (constraintOp) {
+		case DamNumGMRel_Geq:
+		case DamNumGMRel_Leq: {
+			let coeff = (constraintOp == DamNumGMRel_Leq) ? 1.0 : -1.0;
+			let slack = DamNumGMSymbol.create(self.idTick, DamNumGMSymbolKind_Slack);
+			self.idTick += 1;
+			row.insertSymbol(slack, coeff);
+			let constraintStrength = constraint.getStrength();
+			if (constraintStrength < DamNumGMStrength.REQUIRED) {
+				let error = DamNumGMSymbol.create(self.idTick, DamNumGMSymbolKind_Error);
+				self.idTick += 1;
+				row.insertSymbol(error, -coeff);
+				objective.insertSymbol(error, constraintStrength);
+				tag = DamNumGMTag.create(
+					marker: slack,
+					other: error
+				);
+			} else {
+				tag = DamNumGMTag.create(
+					marker: slack,
+					other: DamNumGMSymbol.invalid()
+				);
+			}
+			break;
+		}
+		case DamNumGMRel_Eq: {
+			let constraintStrength = constraint.getStrength();
+			if (constraintStrength < DamNumGMStrength.REQUIRED) {
+				let errplus = DamNumGMSymbol.create(self.idTick, DamNumGMSymbolKind_Error);
+				self.idTick += 1;
+				let errminus = DamNumGMSymbol.create(self.idTick, DamNumGMSymbolKind_Error);
+				self.idTick += 1;
+				row.insertSymbol(errplus,  -1.0);
+				row.insertSymbol(errminus,  1.0);
+				objective.insertSymbol(errplus, constraintStrength);
+				objective.insertSymbol(errminus, constraintStrength);
+				tag = DamNumGMTag.create(
+					marker: errplus,
+					other: errminus
+				);
+			} else {
+				let dummy = DamNumGMSymbol.create(self.idTick, DamNumGMSymbolKind_Dummy);
+				self.idTick += 1;
+				row.insertSymbol(dummy, 1.0);
+				tag = DamNumGMTag.create(
+					marker: dummy,
+					other: DamNumGMSymbol.invalid()
+				);
+			}
+			break;
+		}
+		default:
+			throwAbortException("shouldn't happen");
+		}
+
+		if (row.constant < 0.0) {
+			row.reverseSign();
+		}
+		return row, tag;
+	}
+
+	static private DamNumGMSymbol chooseSubject(DamNumGMRow row, DamNumGMTag tag) {
+		let iter = row.cells.iter();
+		while (true) {
+			let ko = iter.next();
+			if (ko is "DamNumGMHashUnoccupied") { break; }
+			let s = DamNumGMSymbol(ko);
+
+			if (s.kind == DamNumGMSymbolKind_External) {
+				return s;
+			}
+		}
+		if (tag.marker.kind == DamNumGMSymbolKind_Slack || tag.marker.kind == DamNumGMSymbolKind_Error) {
+			if (row.coefficientFor(tag.marker) < 0.0) {
+				return tag.marker;
+			}
+		}
+		if (tag.other.kind == DamNumGMSymbolKind_Slack || tag.other.kind == DamNumGMSymbolKind_Error) {
+			if (row.coefficientFor(tag.other) < 0.0) {
+				return tag.other;
+			}
+		}
+		return DamNumGMSymbol.invalid();
+	}
+
+	private bool addWithArtificialVariable(DamNumGMRow row) {
+		let art = DamNumGMSymbol.create(self.idTick, DamNumGMSymbolKind_Slack);
+		self.idTick += 1;
+		self.rows.insert(art, row.clone());
+		self.artificial = row.clone();
+
+		let artificial = self.artificial;
+		self.optimise(artificial);
+		let success = DamNumGMGlobalMaths.nearZero(artificial.constant);
+		self.artificial = NULL;
+
+		let r = self.rows.remove(art);
+		if (!(r is "DamNumGMHashUnoccupied")) {
+			let row = DamNumGMRow(r);
+			if (row.cells.isEmpty()) {
+				return success;
+			}
+			let entering = anyPivotableSymbol(row);
+			if (entering.kind == DamNumGMSymbolKind_Invalid) {
+				return false;
+			}
+			row.solveForSymbols(art, entering);
+			self.substitute(entering, row);
+			self.rows.insert(entering, row);
+		}
+
+		let iter = self.rows.iter();
+		while (true) {
+			Object ko, vo;
+			[ko, vo] = iter.next();
+			if (ko is "DamNumGMHashUnoccupied") { break; }
+
+			let row = DamNumGMRow(vo);
+
+			row.remove(art);
+		}
+		self.objective.remove(art);
+		return success;
+	}
+
+	private void substitute(DamNumGMSymbol symbol, DamNumGMRow row) {
+		let iter = self.rows.iter();
+		while (true) {
+			Object ko, vo;
+			[ko, vo] = iter.next();
+			if (ko is "DamNumGMHashUnoccupied") { break; }
+
+			let otherSymbol = DamNumGMSymbol(ko);
+			let otherRow = DamNumGMRow(vo);
+
+			let constantChanged = otherRow.substitute(symbol, row);
+			if (otherSymbol.kind == DamNumGMSymbolKind_External && constantChanged) {
+				let v = DamNumGMVariable(self.varForSymbol.get(otherSymbol));
+				if (self.shouldClearChanges) {
+					self.changed.clear();
+					self.shouldClearChanges = false;
+				}
+				self.changed.insert(v);
+			}
+			if (otherSymbol.kind != DamNumGMSymbolKind_External && otherRow.constant < 0.0) {
+				self.infeasibleRows.push(otherSymbol);
+			}
+		}
+		self.objective.substitute(symbol, row);
+		if (self.artificial != NULL) {
+			let artificial = self.artificial;
+			artificial.substitute(symbol, row);
+		}
+	}
+
+	private void optimise(DamNumGMRow objective) {
+		while (true) {
+			let entering = getEnteringSymbol(objective);
+			if (entering.kind == DamNumGMSymbolKind_Invalid) {
+				return;
+			}
+			DamNumGMSymbol leaving;
+			DamNumGMRow row;
+			[leaving, row] = self.getLeavingRow(entering);
+			if (leaving == NULL) {
+				throwAbortException("internal solver error: the objective is unbounded");
+			}
+			row.solveForSymbols(leaving, entering);
+			self.substitute(entering, row);
+			if (entering.kind == DamNumGMSymbolKind_External && row.constant != 0.0) {
+				let v = DamNumGMVariable(self.varForSymbol.get(entering));
+				self.varChanged(v);
+			}
+			self.rows.insert(entering, row);
+		}
+	}
+
+	private void dualOptimise() {
+		while (self.infeasibleRows.size() != 0u) {
+			let leaving = self.infeasibleRows[self.infeasibleRows.size() - 1];
+			self.infeasibleRows.pop();
+
+			DamNumGMRow row;
+			let e = self.rows.get(leaving);
+			if (!(e is "DamNumGMHashUnoccupied")) {
+				let entry = DamNumGMRow(e);
+				if (entry.constant < 0.0) {
+					row = entry;
+					self.rows.remove(leaving);
+				} else {
+					row = NULL;
+				}
+			} else {
+				row = NULL;
+			}
+			if (row != NULL) {
+				let entering = self.getDualEnteringSymbol(row);
+				if (entering.kind == DamNumGMSymbolKind_Invalid) {
+					throwAbortException("internal solver error: dual optimise failed");
+				}
+				row.solveForSymbols(leaving, entering);
+				self.substitute(entering, row);
+				if (entering.kind == DamNumGMSymbolKind_External && row.constant != 0.0) {
+					let v = DamNumGMVariable(self.varForSymbol.get(entering));
+					self.varChanged(v);
+				}
+				self.rows.insert(entering, row);
+			}
+		}
+	}
+
+	private DamNumGMSymbol getEnteringSymbol(DamNumGMRow objective) {
+		let iter = objective.cells.iter();
+		while (true) {
+			Object ko, vo;
+			[ko, vo] = iter.next();
+			if (ko is "DamNumGMHashUnoccupied") { break; }
+
+			let symbol = DamNumGMSymbol(ko);
+			let value = DamNumGMBoxedDouble(vo).val;
+
+			if (symbol.kind != DamNumGMSymbolKind_Dummy && value < 0.0) {
+				return symbol;
+			}
+		}
+		return DamNumGMSymbol.invalid();
+	}
+
+	private DamNumGMSymbol getDualEnteringSymbol(DamNumGMRow row) {
+		let entering = DamNumGMSymbol.invalid();
+		let ratio = double.INFINITY;
+		let objective = self.objective;
+		let iter = row.cells.iter();
+		while (true) {
+			Object ko, vo;
+			[ko, vo] = iter.next();
+			if (ko is "DamNumGMHashUnoccupied") { break; }
+
+			let symbol = DamNumGMSymbol(ko);
+			let value = DamNumGMBoxedDouble(vo).val;
+
+			if (value > 0.0 && symbol.kind != DamNumGMSymbolKind_Dummy) {
+				let coeff = objective.coefficientFor(symbol);
+				let r = coeff / value;
+				if (r < ratio) {
+					ratio = r;
+					entering = symbol;
+				}
+			}
+		}
+		return entering;
+	}
+
+	private static DamNumGMSymbol anyPivotableSymbol(DamNumGMRow row) {
+		let iter = row.cells.iter();
+		while (true) {
+			Object ko, vo;
+			[ko, vo] = iter.next();
+			if (ko is "DamNumGMHashUnoccupied") { break; }
+
+			let symbol = DamNumGMSymbol(ko);
+
+			if (symbol.kind == DamNumGMSymbolKind_Slack || symbol.kind == DamNumGMSymbolKind_Error) {
+				return symbol;
+			}
+		}
+		return DamNumGMSymbol.invalid();
+	}
+
+	private DamNumGMSymbol, DamNumGMRow getLeavingRow(DamNumGMSymbol entering) {
+		let ratio = double.INFINITY;
+		DamNumGMSymbol found = NULL;
+		let iter = self.rows.iter();
+		while (true) {
+			Object ko, vo;
+			[ko, vo] = iter.next();
+			if (ko is "DamNumGMHashUnoccupied") { break; }
+
+			let symbol = DamNumGMSymbol(ko);
+			let row = DamNumGMRow(vo);
+
+			if (symbol.kind != DamNumGMSymbolKind_External) {
+				let temp = row.coefficientFor(entering);
+				if (temp < 0.0) {
+					let tempRatio = -row.constant / temp;
+					if (tempRatio < ratio) {
+						ratio = tempRatio;
+						found = symbol;
+					}
+				}
+			}
+		}
+		if (found != NULL) {
+			return found, DamNumGMRow(self.rows.remove(found));
+		} else {
+			return NULL, NULL;
+		}
+	}
+
+	private DamNumGMSymbol, DamNumGMRow getMarkerLeavingRow(DamNumGMSymbol marker) {
+		let r1 = double.INFINITY;
+		let r2 = r1;
+		DamNumGMSymbol first = NULL;
+		DamNumGMSymbol second = NULL;
+		DamNumGMSymbol third = NULL;
+		let iter = self.rows.iter();
+		while (true) {
+			Object ko, vo;
+			[ko, vo] = iter.next();
+			if (ko is "DamNumGMHashUnoccupied") { break; }
+
+			let symbol = DamNumGMSymbol(ko);
+			let row = DamNumGMRow(vo);
+
+			let c = row.coefficientFor(marker);
+			if (c == 0.0) {
+				continue;
+			}
+			if (symbol.kind == DamNumGMSymbolKind_External) {
+				third = symbol;
+			} else if (c < 0.0) {
+				let r = -row.constant / c;
+				if (r < r1) {
+					r1 = r;
+					first = symbol;
+				}
+			} else {
+				let r = row.constant / c;
+				if (r < r2) {
+					r2 = r;
+					second = symbol;
+				}
+			}
+		}
+		let s =
+			(first != NULL)
+			? first
+			: (second != NULL)
+			  ? second
+			  : third;
+		if (s != NULL) {
+			if (s.kind == DamNumGMSymbolKind_External && DamNumGMRow(self.rows.get(s)).constant != 0.0) {
+				let v = DamNumGMVariable(self.varForSymbol.get(s));
+				self.varChanged(v);
+			}
+			let r = self.rows.remove(s);
+			if (!(r is "DamNumGMHashUnoccupied")) {
+				return s, DamNumGMRow(r);
+			} else {
+				return NULL, NULL;
+			}
+		} else {
+			return NULL, NULL;
+		}
+	}
+
+	private void removeConstraintEffects(DamNumGMConstraint cn, DamNumGMTag tag) {
+		if (tag.marker.kind == DamNumGMSymbolKind_Error) {
+			self.removeMarkerEffects(tag.marker, cn.getStrength());
+		} else if (tag.other.kind == DamNumGMSymbolKind_Error) {
+			self.removeMarkerEffects(tag.other, cn.getStrength());
+		}
+	}
+
+	private void removeMarkerEffects(DamNumGMSymbol marker, double strength) {
+		let r = self.rows.get(marker);
+		if (!(r is "DamNumGMHashUnoccupied")) {
+			let row = DamNumGMRow(r);
+			self.objective.insertRow(row, -strength);
+		} else {
+			self.objective.insertSymbol(marker, -strength);
+		}
+	}
+
+	private static bool allDummies(DamNumGMRow row) {
+		let iter = row.cells.iter();
+		while (true) {
+			let ko = iter.next();
+			if (ko is "DamNumGMHashUnoccupied") { break; }
+			let s = DamNumGMSymbol(ko);
+
+			if (s.kind != DamNumGMSymbolKind_Dummy) {
+				return false;
+			}
+		}
+		return true;
+	}
+
+	static void printRow(DamNumGMRow row) {
+		let ret = "row = Row {\n    cells: {\n";
+
+		let iter = row.cells.iter();
+		while (true) {
+			Object ko, vo;
+			[ko, vo] = iter.next();
+			if (ko is "DamNumGMHashUnoccupied") { break; }
+
+			let symbol = DamNumGMSymbol(ko);
+			let val = DamNumGMBoxedDouble(vo).val;
+
+			ret.appendFormat("        %s: %f,\n", symbol.repr(), val);
+		}
+		ret.appendFormat("    },\n    constant: %f,\n}", row.constant);
+		Console.printf(ret);
+	}
+
+	private void printRows() {
+		let ret = "self.rows = {\n";
+		let iter = self.rows.iter();
+		while (true) {
+			Object ko, vo;
+			[ko, vo] = iter.next();
+			if (ko is "DamNumGMHashUnoccupied") { break; }
+
+			let symbol = DamNumGMSymbol(ko);
+			let row = DamNumGMRow(vo);
+
+			ret.appendFormat("    %s: Row {\n        cells: {\n", symbol.repr());
+
+			let iter = row.cells.iter();
+			while (true) {
+				Object ko, vo;
+				[ko, vo] = iter.next();
+				if (ko is "DamNumGMHashUnoccupied") { break; }
+
+				let symbol = DamNumGMSymbol(ko);
+				let val = DamNumGMBoxedDouble(vo).val;
+
+				ret.appendFormat("            %s: %f,\n", symbol.repr(), val);
+			}
+			ret.appendFormat("        },\n        constant: %f,\n    },\n", row.constant);
+		}
+		ret.appendFormat("}");
+		Console.printf(ret);
+	}
+}
