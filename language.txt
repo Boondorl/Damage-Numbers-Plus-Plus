@@ -1,0 +1,30 @@
+[enu default]
+
+OPTVAL_BUNDLED = "Bundled";
+OPTVAL_SEPARATE = "Separated";
+
+OPTVAL_EVERYTHING = "Everything";
+OPTVAL_MONSTERS = "Monsters only";
+OPTVAL_PLAYER = "Player only";
+
+OPTVAL_SMALL = "Small font";
+OPTVAL_NEWSMALL = "New small font";
+OPTVAL_ALTSMALL = "Alternative small font";
+OPTVAL_ORIGSMALL = "Original small font";
+OPTVAL_SMALL2 = "Small font 2";
+OPTVAL_BIG = "Big font";
+OPTVAL_ORIGBIG = "Original big font";
+OPTVAL_INTERMIS = "Intermission font";
+OPTVAL_CONFONT = "Console font";
+OPTVAL_NEWCONFONT = "New console font";
+
+NUMMNU_TITLE = "Damage Number Options";
+
+NUMMNU_ENABLE = "Enable damage numbers";
+NUMMNU_MULTIHIT = "Multi-hit type";
+NUMMNU_OVERKILL = "Show overkill damage";
+NUMMNU_DEATHCOLORS = "Use death colors";
+NUMMNU_DMGTYPECOLORS = "Use damage type colors";
+NUMMNU_SPAWNTYPE = "Spawn damage numbers from";
+NUMMNU_DMGTYPE = "Show damage from";
+NUMMNU_FONT = "Damage number font";
