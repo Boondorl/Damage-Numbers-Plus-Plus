@@ -1,8 +1,8 @@
-user bool damagenumbers_enabled = true;
-user int damagenumbers_type = 0;
-user bool damagenumbers_allowdeath = true;
-user bool damagenumbers_allowdamagetypes = true;
-user bool damagenumbers_allowoverkill = false;
-user string damagenumbers_fonttype = "5";
-user int damagenumbers_damagetype = 0;
-user int damagenumbers_actortype = 0;
+nosave bool damagenumbers_enabled = true;
+nosave int damagenumbers_type = 0;
+nosave bool damagenumbers_allowdeath = true;
+nosave bool damagenumbers_allowdamagetypes = true;
+nosave bool damagenumbers_allowoverkill = false;
+nosave string damagenumbers_fonttype = "BigFont";
+nosave int damagenumbers_damagetype = 0;
+nosave int damagenumbers_actortype = 0;

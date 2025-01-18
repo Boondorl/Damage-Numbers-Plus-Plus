@@ -11,7 +11,7 @@ class DamageInfo ui
 	{
 		let di = new("DamageInfo");
 		di.mo = mo;
-		di.pos = di.mo.pos.PlusZ((di.mo.bKilled ? di.mo.default.height : di.mo.height) - di.mo.floorClip);
+		di.pos = di.mo.pos.PlusZ(di.mo.height - di.mo.floorClip);
 		di.Update(damage, damageType);
 
 		return di;
@@ -21,7 +21,7 @@ class DamageInfo ui
 	{
 		damage += dmg;
 		damageType = dmgType;
-		if (!bDied && mo.bKilled)
+		if (!bDied && mo.health <= 0)
 		{
 			bDied = true;
 			overkillDamage = abs(mo.health);
@@ -113,25 +113,18 @@ class DamageFontInfoBucket ui
 
 class DamageNumberHandler : StaticEventHandler
 {
-	const EMPTY_STRING = "";
 	const MS_TO_S = 1.0 / 1000.0;
 	const BASE_RES = 1.0 / 1080.0;
 
 	// General font information
-	private ui bool bInitialized;
 	private ui string game;
 	private ui Map<Name, DamageFontInfoBucket> fonts;
-	private ui Font globalFonts[10];
 	
 	// Draw behavior
 	private ui DamNumGMProjectionCache sInfo;
 	private ui double prevTime;
 	private ui Array<DamageNumber> dmgNums;
 	private ui Array<DamageInfo> damaged;
-
-	// For passing damaged Actor information
-	private Actor currentlyDamaging;
-	private Name currentDamageType;
 
 	ui int FetchTranslation(string translation)
 	{
@@ -143,21 +136,62 @@ class DamageNumberHandler : StaticEventHandler
 	{
 		Font f = Font.FindFont(fnt);
 		if (!f)
-			f = globalFonts[clamp(fnt.ToInt(), 0, globalFonts.Size()-1)];
+			f = BigFont;
 
 		return f;
 	}
 
+	override void OnEngineInitialize()
+	{
+		EventHandler.SendInterfaceEvent(consoleplayer, "InitializeDamagePopups");
+	}
+
 	override void InterfaceProcess(ConsoleEvent e)
 	{
-		if (!e.isManual && e.name ~== "DamagePopupEvent")
+		if (e.isManual)
+			return;
+
+		if (e.name ~== "InitializeDamagePopups")
 		{
-			int type = clamp(CVar.GetCVar("damagenumbers_type", players[consolePlayer]).GetInt(), 0, 1);
-			int i = type == 1 ? damaged.Size() : FindDamageActor(currentlyDamaging);
+			switch (gameInfo.gameType)
+			{
+				case GAME_Doom:
+					game = "DOOM";
+					break;
+					
+				case GAME_Heretic:
+					game = "HERETIC";
+					break;
+					
+				case GAME_Hexen:
+					game = "HEXEN";
+					break;
+					
+				case GAME_Chex:
+					game = "CHEX";
+					break;
+					
+				case GAME_Strife:
+					game = "STRIFE";
+					break;
+			}
+
+			return;
+		}
+
+		Array<String> cmd;
+		e.name.Split(cmd, ":", TOK_SKIPEMPTY);
+		if (cmd.Size() != 2)
+			return;
+			
+		if (cmd[0] ~== "DamagePopupEvent")
+		{
+			Actor mo = Actor(GetNetworkEntity(e.Args[0]));
+			int i = damagenumbers_type == 1 ? damaged.Size() : FindDamageActor(mo);
 			if (i >= damaged.Size())
-				damaged.Push(DamageInfo.Create(currentlyDamaging, e.args[0], currentDamageType));
+				damaged.Push(DamageInfo.Create(mo, e.args[1], cmd[1]));
 			else
-				damaged[i].Update(e.args[0], currentDamageType);
+				damaged[i].Update(e.args[1], cmd[1]);
 		}
 	}
 
@@ -212,65 +246,25 @@ class DamageNumberHandler : StaticEventHandler
 	
 	override void UITick()
 	{
-		if (!bInitialized)
-		{
-			bInitialized = true;
-
-			switch (gameInfo.gameType)
-			{
-				case GAME_Doom:
-					game = "DOOM";
-					break;
-					
-				case GAME_Heretic:
-					game = "HERETIC";
-					break;
-					
-				case GAME_Hexen:
-					game = "HEXEN";
-					break;
-					
-				case GAME_Chex:
-					game = "CHEX";
-					break;
-					
-				case GAME_Strife:
-					game = "STRIFE";
-					break;
-			}
-
-			// These can't work in a static const array since the variables themselves aren't marked constant...
-			globalFonts[0] = smallFont;
-			globalFonts[1] = newSmallFont;
-			globalFonts[2] = alternativeSmallFont;
-			globalFonts[3] = originalSmallFont;
-			globalFonts[4] = smallFont2;
-			globalFonts[5] = bigFont;
-			globalFonts[6] = originalBigFont;
-			globalFonts[7] = intermissionFont;
-			globalFonts[8] = conFont;
-			globalFonts[9] = newConsoleFont;
-		}
-
 		if (!damaged.Size())
 			return;
 
-		Font curFont = FetchFont(CVar.GetCVar("damagenumbers_fonttype", players[consolePlayer]).GetString());
-		bool allowDmgTypes = CVar.GetCVar("damagenumbers_allowdamagetypes", players[consolePlayer]).GetBool();
-		bool dmgNumDeath = CVar.GetCVar("damagenumbers_allowdeath", players[consolePlayer]).GetBool();
-		bool dmgNumOverkill = CVar.GetCVar("damagenumbers_allowoverkill", players[consolePlayer]).GetBool();
+		Font curFont = FetchFont(damagenumbers_fonttype);
+		bool allowDmgTypes = damagenumbers_allowdamagetypes;
+		bool dmgNumDeath = damagenumbers_allowdeath;
+		bool dmgNumOverkill = damagenumbers_allowoverkill;
 		foreach (hit : damaged)
 		{
-			string lookUp = EMPTY_STRING;
+			string lookUp;
 			string dmgType = hit.damageType;
 
 			// Look up death translation value
 			if (hit.bDied && dmgNumDeath)
 			{
-				lookUp = allowDmgTypes ? CheckValidKey(game.."_DEATH_"..dmgType) : EMPTY_STRING;
+				lookUp = allowDmgTypes ? CheckValidKey(game.."_DEATH_"..dmgType) : "";
 				if (!lookUp.Length())
 				{
-					lookUp = allowDmgTypes ? CheckValidKey("DEATH_"..dmgType) : EMPTY_STRING;
+					lookUp = allowDmgTypes ? CheckValidKey("DEATH_"..dmgType) : "";
 					if (!lookUp.Length())
 					{
 						lookUp = CheckValidKey(game.."_DEATH_DEFAULT");
@@ -283,10 +277,10 @@ class DamageNumberHandler : StaticEventHandler
 			// Look up regular translation value
 			if (!lookUp.Length())
 			{
-				lookUp = allowDmgTypes ? CheckValidKey(game..dmgType) : EMPTY_STRING;
+				lookUp = allowDmgTypes ? CheckValidKey(game..dmgType) : "";
 				if (!lookUp.Length())
 				{
-					lookUp = allowDmgTypes ? CheckValidKey(dmgType) : EMPTY_STRING;
+					lookUp = allowDmgTypes ? CheckValidKey(dmgType) : "";
 					if (!lookUp.Length())
 					{
 						lookUp = CheckValidKey(game.."_DEFAULT");
@@ -311,7 +305,7 @@ class DamageNumberHandler : StaticEventHandler
 	private ui string CheckValidKey(string key)
 	{
 		string localized = "$"..key;
-		return StringTable.Localize(localized) == key ? EMPTY_STRING : localized;
+		return StringTable.Localize(localized) == key ? "" : localized;
 	}
 
 	private ui int FetchFontTranslation(Name key, Font fnt)
@@ -333,23 +327,17 @@ class DamageNumberHandler : StaticEventHandler
 			return;
 		
 		// Check enabled
-		if (!CVar.GetCVar("damagenumbers_enabled", players[consolePlayer]).GetBool())
+		if (!damagenumbers_enabled)
 			return;
 		
 		// Check actor type
-		int aType = clamp(CVar.GetCVar("damagenumbers_actortype", players[consolePlayer]).GetInt(), 0, 1);
-		if (aType == 0 && !e.thing.bIsMonster)
+		if (!damagenumbers_actortype && !e.thing.bIsMonster)
 			return;
 		
 		// Check damage dealer type
-		int dType = clamp(CVar.GetCVar("damagenumbers_damagetype", players[consolePlayer]).GetInt(), 0, 1);
-		if (dType == 0 && e.damageSource != players[consolePlayer].mo)
+		if (!damagenumbers_damagetype && e.damageSource != players[consolePlayer].mo)
 			return;
 
-		currentlyDamaging = e.thing;
-		currentDamageType = e.damageType;
-		EventHandler.SendInterfaceEvent(consolePlayer, "DamagePopupEvent", e.damage);
-		currentlyDamaging = null;
-		currentDamageType = 'None';
+		EventHandler.SendInterfaceEvent(consolePlayer, "DamagePopupEvent:"..e.damageType, e.thing.GetNetworkID(), e.damage);
 	}
 }

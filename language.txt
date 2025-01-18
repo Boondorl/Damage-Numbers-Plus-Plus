@@ -9,7 +9,6 @@ OPTVAL_PLAYER = "Player only";
 
 OPTVAL_SMALL = "Small font";
 OPTVAL_NEWSMALL = "New small font";
-OPTVAL_ALTSMALL = "Alternative small font";
 OPTVAL_ORIGSMALL = "Original small font";
 OPTVAL_SMALL2 = "Small font 2";
 OPTVAL_BIG = "Big font";

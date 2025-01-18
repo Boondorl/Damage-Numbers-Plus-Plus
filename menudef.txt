@@ -16,18 +16,17 @@ OptionValue "DamageNumberDamageTypes"
 	1, "$OPTVAL_EVERYTHING"
 }
 
-OptionValue "DamageNumberFont"
+OptionString "DamageNumberFont"
 {
-	"0", "$OPTVAL_SMALL"
-	"1", "$OPTVAL_NEWSMALL"
-	"2", "$OPTVAL_ALTSMALL"
-	"3", "$OPTVAL_ORIGSMALL"
-	"4", "$OPTVAL_SMALL2"
-	"5", "$OPTVAL_BIG"
-	"6", "$OPTVAL_ORIGBIG"
-	"7", "$OPTVAL_INTERMIS"
-	"8", "$OPTVAL_CONFONT"
-	"9", "$OPTVAL_NEWCONFONT"
+	"SmallFont", "$OPTVAL_SMALL"
+	"NewSmallFont", "$OPTVAL_NEWSMALL"
+	"OriginalSmallFont", "$OPTVAL_ORIGSMALL"
+	"SmallFont2", "$OPTVAL_SMALL2"
+	"BigFont", "$OPTVAL_BIG"
+	"OriginalBigFont", "$OPTVAL_ORIGBIG"
+	"IntermissionFont", "$OPTVAL_INTERMIS"
+	"ConsoleFont", "$OPTVAL_CONFONT"
+	"NewConsoleFont", "$OPTVAL_NEWCONFONT"
 }
 
 AddOptionMenu "OptionsMenu"

@@ -1,21 +1,6 @@
 [enu default]
 
 /*******************************
-Font indices:
-
-SMALL FONT = 0
-NEW SMALL FONT = 1
-ALTERNATIVE SMALL FONT = 2
-ORIGINAL SMALL FONT = 3
-SMALL FONT 2 = 4
-BIG FONT = 5
-ORIGINAL BIG FONT = 6
-INTERMISSION FONT = 7
-CONSOLE FONT = 8
-NEW CONSOLE FONT = 9
-
-Custom fonts can be specified by using a name instead of an index e.g. MyCustomFont.
-
 Translation indices:
 
 NATIVE = -1
@@ -52,7 +37,7 @@ Custom font translations can be specified by using a name instead of an index e.
 
 The key for your value should be the exact name of the damage type. Each value follows a specific definition:
 
-	"[font index/name],[font translation index/name]"
+	"[font name],[font translation index/name]"
 	
 If only a single value is provided it's treated as a default translation to use across all fonts. Later values will
 override previous ones.
@@ -61,7 +46,7 @@ override previous ones.
 	
 Multiple translations can be defined per damage type based on the font.
 
-	"[first font index/name],[first font translation index/name]:[second font index/name],[second font translation index/name]"
+	"[first font name],[first font translation index/name]:[second font name],[second font translation index/name]"
 	
 This will change the translation based off which font settings the player is using, that way damage numbers can always
 look "correct" regardless of which style of font was chosen. Later values will override previous ones. This can
