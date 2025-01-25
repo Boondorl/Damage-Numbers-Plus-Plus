@@ -54,4 +54,6 @@ OptionMenu "DamageNumberOptionsMenu"
 	Option "$NUMMNU_SPAWNTYPE", "damagenumbers_actortype", "DamageNumberActors", "damagenumbers_enabled"
 	Option "$NUMMNU_DMGTYPE", "damagenumbers_damagetype", "DamageNumberDamageTypes", "damagenumbers_enabled"
 	Option "$NUMMNU_FONT", "damagenumbers_fonttype", "DamageNumberFont", "damagenumbers_enabled"
+	Option "$NUMMNU_RATIO", "damagenumbers_squareratio", "YesNo", "damagenumbers_enabled"
+	Slider "$NUMMNU_SCALE", "damagenumbers_scale", 1, 6, 1, 0, "damagenumbers_enabled"
 }

@@ -34,7 +34,10 @@ class DamageNumber ui
 			{
 				Vector2 p = DamNumGMGlobalMaths.NDCToViewport(ndc);
 
-				Vector2 scale = (2.0, 2.0 * level.pixelStretch) * scalar;
+				Vector2 scale = (damagenumbers_scale, damagenumbers_scale) * scalar;
+				if (!damagenumbers_squareratio)
+					scale.y *= 1.2;
+					
 				p.x -= width * scale.x;
 				p.y -= height * scale.y;
 				

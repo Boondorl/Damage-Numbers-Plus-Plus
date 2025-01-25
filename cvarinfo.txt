@@ -6,3 +6,5 @@ nosave bool damagenumbers_allowoverkill = false;
 nosave string damagenumbers_fonttype = "BigFont";
 nosave int damagenumbers_damagetype = 0;
 nosave int damagenumbers_actortype = 0;
+nosave int damagenumbers_scale = 2; // Scalar is an int since fractional values can make fonts look really bad.
+nosave bool damagenumbers_squareratio = false; // Disable 1.2x height scaling.

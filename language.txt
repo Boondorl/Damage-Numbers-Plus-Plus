@@ -27,3 +27,5 @@ NUMMNU_DMGTYPECOLORS = "Use damage type colors";
 NUMMNU_SPAWNTYPE = "Spawn damage numbers from";
 NUMMNU_DMGTYPE = "Show damage from";
 NUMMNU_FONT = "Damage number font";
+NUMMNU_SCALE = "Damage number scale";
+NUMMNU_RATIO = "Use square pixel ratio";
